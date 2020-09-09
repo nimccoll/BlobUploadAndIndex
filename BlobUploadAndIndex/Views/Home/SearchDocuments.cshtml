@@ -1,0 +1,164 @@
+﻿<!--
+//===============================================================================
+// Microsoft FastTrack for Azure
+// Upload Blob and Index with Azure Search Example
+//===============================================================================
+// Copyright © Microsoft Corporation.  All rights reserved.
+// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY
+// OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT
+// LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS FOR A PARTICULAR PURPOSE.
+//===============================================================================
+-->
+@model IEnumerable<BlobUploadAndIndex.Models.Document>
+
+@{
+    ViewData["Title"] = "Search Documents";
+}
+
+<h2>Search Documents</h2>
+<div class="row">
+    <div class="input-group mb-3 col-md-6">
+        <input name="txtSearch" id="txtSearch" type="text" class="form-control" placeholder="Search by category or sub-category" value="@ViewBag.SearchText">
+        <div class="input-group-append">
+            <button class="btn btn-outline-primary" type="button" name="btnSearch" id="btnSearch">Search</button>
+        </div>
+    </div>
+    <div class="input-group mb-3 col-md-6">
+        <div class="input-group-prepend">
+            <label class="input-group-text" for="inputGroupSelect01">Sort By</label>
+        </div>
+        <select class="custom-select" id="ddlOrderBy" name="ddlOrderBy">
+            <option value="">Choose...</option>
+            <option value="Category">Category</option>
+            <option value="SubCategory">SubCategory</option>
+        </select>
+    </div>
+</div>
+<table class="table table-sm table-striped">
+    <thead class="thead-dark">
+        <tr>
+            <th>
+                File Name
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Category)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.SubCategory)
+            </th>
+            <th>
+                Content Type
+            </th>
+            <th>
+                Size
+            </th>
+            <th>
+                Last Modified
+            </th>
+            <th>
+                URL
+            </th>
+            <th>
+                Language
+            </th>
+            <th>
+                Author
+            </th>
+            <th>
+                Title
+            </th>
+            <th>
+                Date Created
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_storage_name)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Category)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.SubCategory)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_storage_content_type)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_storage_size)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_storage_last_modified)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_storage_path)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_language)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_author)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_title)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.metadata_creation_date)
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<nav>
+    <ul class="pagination">
+        <li class="@ViewBag.PreviousClass">
+            @if (ViewBag.PreviousClass.Contains("disabled"))
+            {
+                <a class="page-link" href="Javascript:void(0)">Previous</a>
+            }
+            else
+            {
+                @Html.ActionLink("Previous", "SearchDocuments", "Home", new { searchText = ViewBag.SearchText, startRow = ViewBag.PreviousRow, numberOfRows = ViewBag.NumberOfRows, orderBy = ViewBag.OrderBy }, new { @class = "page-link" })
+            }
+        </li>
+        <li class="@ViewBag.NextClass">
+            @if (ViewBag.NextClass.Contains("disabled"))
+            {
+                <a class="page-link" href="Javascript:void(0)">Next</a>
+            }
+            else
+            {
+                @Html.ActionLink("Next", "SearchDocuments", "Home", new { searchText = ViewBag.SearchText, startRow = ViewBag.NextRow, numberOfRows = ViewBag.NumberOfRows, orderBy = ViewBag.OrderBy }, new { @class = "page-link" })
+            }
+        </li>
+    </ul>
+</nav>
+@section Scripts {
+    <script type="text/javascript">
+        function searchDocuments(startRow) {
+            var redirectUrl = '/home/searchDocuments/?searchText=';
+            var searchTerm = $('#txtSearch').val();
+            if (searchTerm == '') {
+                searchTerm = "*";
+            }
+            var numberOfRows = @ViewBag.NumberOfRows;
+            var orderBy = $('#ddlOrderBy').val();
+
+            redirectUrl = redirectUrl + searchTerm + '&startRow=' + startRow + '&numberOfRows=' + numberOfRows + '&orderBy=' + orderBy;
+            window.location = redirectUrl;
+        }
+
+        $(document).ready(function () {
+            $("#ddlOrderBy").val('@ViewBag.OrderBy');
+            $('#btnSearch').on('click', function (event) {
+                event.preventDefault(); // prevent button click from submitting the form
+                searchDocuments(1);
+            });
+        });
+    </script>
+}

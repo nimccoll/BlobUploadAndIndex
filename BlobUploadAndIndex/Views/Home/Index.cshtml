@@ -1,0 +1,27 @@
+﻿<!--
+//===============================================================================
+// Microsoft FastTrack for Azure
+// Upload Blob and Index with Azure Search Example
+//===============================================================================
+// Copyright © Microsoft Corporation.  All rights reserved.
+// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY
+// OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT
+// LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS FOR A PARTICULAR PURPOSE.
+//===============================================================================
+-->
+@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Blob Upload and Index Sample</h1>
+    <div class="row" style="margin-top:20px">
+        <div class="col-md-6">
+            @Html.ActionLink("Search Documents", "SearchDocuments", "Home", new { }, new { @class = "btn btn-lg btn-primary" })
+        </div>
+        <div class="col-md-6">
+            @Html.ActionLink("Upload Document", "UploadBlob", "Home", new { }, new { @class = "btn btn-lg btn-primary" })
+        </div>
+    </div>
+</div>
