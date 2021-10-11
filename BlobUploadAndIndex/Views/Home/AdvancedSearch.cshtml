@@ -1,0 +1,237 @@
+﻿<!--
+//===============================================================================
+// Microsoft FastTrack for Azure
+// Upload Blob and Index with Azure Search Example
+//===============================================================================
+// Copyright © Microsoft Corporation.  All rights reserved.
+// THIS CODE AND INFORMATION IS PROVIDED "AS IS" WITHOUT WARRANTY
+// OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT
+// LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+// FITNESS FOR A PARTICULAR PURPOSE.
+//===============================================================================
+-->
+@model BlobUploadAndIndex.Models.SearchResults
+
+@{
+    ViewData["Title"] = "Advanced Search";
+}
+
+<h2>Search Documents</h2>
+<div class="row">
+    <div class="input-group mb-3 col-md-6">
+        <input name="txtSearch" id="txtSearch" type="text" class="type-ahead form-control" placeholder="Search by category, sub-category, or file name" value="@ViewBag.SearchText">
+        <div class="input-group-append">
+            <button class="btn btn-outline-primary" type="button" name="btnSearch" id="btnSearch">Search</button>
+        </div>
+    </div>
+    <div class="input-group mb-3 col-md-6">
+        <div class="input-group-prepend">
+            <label class="input-group-text" for="inputGroupSelect01">Sort By</label>
+        </div>
+        <select class="custom-select" id="ddlOrderBy" name="ddlOrderBy">
+            <option value="">Choose...</option>
+            <option value="Category">Category</option>
+            <option value="SubCategory">SubCategory</option>
+            <option value="metadata_storage_name">File Name</option>
+        </select>
+    </div>
+</div>
+@if (!string.IsNullOrEmpty(ViewBag.Filter))
+{
+    <div class="row">
+        <div class="col-md-2"><b>Current Filter:</b></div>
+        <div class="input-group mb-3 col-md-10">
+            <input name="txtFilter" id="txtFilter" type="text" class="form-control" value="@ViewBag.Filter.Replace("|", " eq ")" readonly>
+            <div class="input-group-append">
+                <button class="btn btn-outline-primary" type="button" name="btnReset" id="btnReset">Reset</button>
+            </div>
+        </div>
+    </div>
+}
+<div class="row">
+    <div class="col-md-2">
+        @foreach (Facet facet in Model.Facets)
+        {
+            <b>@facet.FacetName</b>
+            <ul>
+            @foreach (KeyValuePair<string, long?> facetValue in facet.FacetValues)
+            {
+                <li><a href="Javascript:filterDocuments('@facet.FacetName|@facetValue.Key')">@facetValue.Key</a> (@facetValue.Value)</li>
+            }
+            </ul>
+        }
+    </div>
+    <div class="col-md-10">
+        <table class="table table-sm table-striped">
+            <thead class="thead-dark">
+                <tr>
+                    <th>
+                        File Name
+                    </th>
+                    <th>
+                        Category
+                    </th>
+                    <th>
+                        SubCategory
+                    </th>
+                    <th>
+                        Content Type
+                    </th>
+                    <th>
+                        Size
+                    </th>
+                    <th>
+                        Last Modified
+                    </th>
+                    <th>
+                        URL
+                    </th>
+                    <th>
+                        Language
+                    </th>
+                    <th>
+                        Author
+                    </th>
+                    <th>
+                        Title
+                    </th>
+                    <th>
+                        Date Created
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.value)
+                {
+                    <tr>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_storage_name)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.Category)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.SubCategory)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_storage_content_type)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_storage_size)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_storage_last_modified)
+                        </td>
+                        <td>
+                            <!-- @Html.DisplayFor(modelItem => item.metadata_storage_path)-->
+                            <a href="@item.metadata_storage_path">@item.metadata_storage_path</a>
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_language)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_author)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_title)
+                        </td>
+                        <td>
+                            @Html.DisplayFor(modelItem => item.metadata_creation_date)
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+        <nav>
+            <ul class="pagination">
+                <li class="@ViewBag.PreviousClass">
+                    @if (ViewBag.PreviousClass.Contains("disabled"))
+                    {
+                        <a class="page-link" href="Javascript:void(0)">Previous</a>
+                    }
+                    else
+                    {
+                        @Html.ActionLink("Previous", "AdvancedSearch", "Home", new { searchText = ViewBag.SearchText, startRow = ViewBag.PreviousRow, numberOfRows = ViewBag.NumberOfRows, orderBy = ViewBag.OrderBy, filter = ViewBag.Filter }, new { @class = "page-link" })
+                    }
+                </li>
+                <li class="@ViewBag.NextClass">
+                    @if (ViewBag.NextClass.Contains("disabled"))
+                    {
+                        <a class="page-link" href="Javascript:void(0)">Next</a>
+                    }
+                    else
+                    {
+                        @Html.ActionLink("Next", "AdvancedSearch", "Home", new { searchText = ViewBag.SearchText, startRow = ViewBag.NextRow, numberOfRows = ViewBag.NumberOfRows, orderBy = ViewBag.OrderBy, filter = ViewBag.Filter }, new { @class = "page-link" })
+                    }
+                </li>
+            </ul>
+        </nav>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        function searchDocuments(startRow) {
+            var redirectUrl = '/home/advancedSearch/?searchText=';
+            var searchTerm = $('#txtSearch').val();
+            if (searchTerm == '') {
+                searchTerm = "*";
+            }
+            var numberOfRows = @ViewBag.NumberOfRows;
+            var orderBy = $('#ddlOrderBy').val();
+            var filterText = '@ViewBag.Filter';
+
+            redirectUrl = redirectUrl + searchTerm + '&startRow=' + startRow + '&numberOfRows=' + numberOfRows + '&orderBy=' + orderBy + '&filter=' + filterText;
+            window.location = redirectUrl;
+        }
+
+        function filterDocuments(filterText) {
+            var redirectUrl = '/home/advancedSearch/?searchText=';
+            var searchTerm = $('#txtSearch').val();
+            if (searchTerm == '') {
+                searchTerm = "*";
+            }
+            var numberOfRows = @ViewBag.NumberOfRows;
+            var orderBy = $('#ddlOrderBy').val();
+
+            redirectUrl = redirectUrl + searchTerm + '&startRow=1&numberOfRows=' + numberOfRows + '&orderBy=' + orderBy + '&filter=' + filterText;
+            window.location = redirectUrl;
+        }
+
+        $(document).ready(function () {
+            $('.type-ahead').autocomplete({
+                source: function (request, response) {
+                    var ajaxUrl = '/home/autocomplete/?searchText=';
+
+                    $.ajax({
+                        url: ajaxUrl + request.term,
+                        type: 'GET',
+                        cache: false,
+                        dataType: 'json',
+                        success: function (json) {
+                            response(json);
+                        },
+                        error: function (XMLHttpRequest, textStatus, errorThrown) {
+                            console.log('error', textStatus, errorThrown);
+                        }
+                    });
+                },
+                minLength: 3,
+                select: function (event, ui) {
+                    $('.type-ahead').val(ui.item.label);
+                    return false;
+                }
+            });
+
+            $("#ddlOrderBy").val('@ViewBag.OrderBy');
+            $('#btnSearch').on('click', function (event) {
+                event.preventDefault(); // prevent button click from submitting the form
+                searchDocuments(1);
+            });
+            $('#btnReset').on('click', function (event) {
+                event.preventDefault(); // prevent button click from submitting the form
+                filterDocuments('');
+            });
+        });
+    </script>
+}

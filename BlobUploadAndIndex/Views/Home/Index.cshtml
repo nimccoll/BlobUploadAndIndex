@@ -17,10 +17,13 @@
 <div class="text-center">
     <h1 class="display-4">Blob Upload and Index Sample</h1>
     <div class="row" style="margin-top:20px">
-        <div class="col-md-6">
+        <div class="col-md-4">
             @Html.ActionLink("Search Documents", "SearchDocuments", "Home", new { }, new { @class = "btn btn-lg btn-primary" })
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
+            @Html.ActionLink("Advanced Search", "AdvancedSearch", "Home", new { }, new { @class = "btn btn-lg btn-primary" })
+        </div>
+        <div class="col-md-4">
             @Html.ActionLink("Upload Document", "UploadBlob", "Home", new { }, new { @class = "btn btn-lg btn-primary" })
         </div>
     </div>

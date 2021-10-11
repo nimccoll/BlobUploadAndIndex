@@ -23,6 +23,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -137,6 +138,7 @@ namespace BlobUploadAndIndex.Controllers
                 {
                     searchOptions.OrderBy.Add(orderBy);
                 }
+
                 // Retrieve the matching documents
                 SearchResults<Document> searchResults = await searchClient.SearchAsync<Document>(searchText, searchOptions);
                 numberOfDocuments = searchResults.TotalCount;
@@ -188,6 +190,119 @@ namespace BlobUploadAndIndex.Controllers
         public IActionResult Error()
         {
             return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> AdvancedSearch(string searchText, int startRow = 1, int numberOfRows = 5, string orderBy = "", string filter = "")
+        {
+            long? numberOfDocuments = 0;
+            SearchResults model = new SearchResults()
+            {
+                value = new List<Document>(),
+                Facets = new List<Facet>()
+            };
+
+            if (!string.IsNullOrEmpty(searchText))
+            {
+                string filterString = string.Empty;
+                if (!string.IsNullOrEmpty(filter))
+                {
+                    string[] filterCriteria = filter.Split("|");
+                    filterString = $"{filterCriteria[0]} eq '{filterCriteria[1]}'";
+                }
+
+                // Create a search client and set the search options
+                SearchClient searchClient = new SearchClient(new Uri(_configuration.GetValue<string>("AZURE_SEARCH_URI")), _configuration.GetValue<string>("AZURE_SEARCH_INDEX"), new AzureKeyCredential(_configuration.GetValue<string>("AZURE_SEARCH_KEY")));
+                SearchOptions searchOptions = new SearchOptions();
+                searchOptions.IncludeTotalCount = true;
+                searchOptions.SearchFields.Add("Category");
+                searchOptions.SearchFields.Add("SubCategory");
+                searchOptions.SearchFields.Add("metadata_storage_name");
+                searchOptions.Skip = startRow - 1;
+                searchOptions.Size = numberOfRows;
+                searchOptions.Facets.Add("Category");
+                searchOptions.Facets.Add("SubCategory");
+                searchOptions.Facets.Add("metadata_storage_file_extension");
+                if (!string.IsNullOrEmpty(orderBy))
+                {
+                    searchOptions.OrderBy.Add(orderBy);
+                }
+                if (!string.IsNullOrEmpty(filterString))
+                {
+                    searchOptions.Filter = filterString;
+                }
+
+                // Retrieve the matching documents
+                SearchResults<Document> searchResults = await searchClient.SearchAsync<Document>(searchText, searchOptions);
+                numberOfDocuments = searchResults.TotalCount;
+
+                // Process facets
+                foreach (KeyValuePair<string, IList<FacetResult>> facet in searchResults.Facets)
+                {
+                    Facet facetOut = new Facet()
+                    {
+                        FacetName = facet.Key,
+                        FacetValues = new Dictionary<string, long?>()
+                    };
+                    foreach (FacetResult facetResult in facet.Value)
+                    {
+                        facetOut.FacetValues.Add(facetResult.Value.ToString(), facetResult.Count);
+                    }
+                    model.Facets.Add(facetOut);
+                }
+
+                AsyncPageable<SearchResult<Document>> results = searchResults.GetResultsAsync();
+
+                await foreach (SearchResult<Document> result in results)
+                {
+                    // Decode the URL of the blob
+                    string url = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(result.Document.metadata_storage_path.Substring(0, result.Document.metadata_storage_path.Length - 1)));
+                    result.Document.metadata_storage_path = url;
+                    model.value.Add(result.Document);
+                }
+            }
+
+            // Configure paging controls
+            if (startRow > 1)
+            {
+                ViewBag.PreviousClass = "page-item";
+                ViewBag.PreviousRow = startRow - numberOfRows;
+            }
+            else
+            {
+                ViewBag.PreviousClass = "page-item disabled";
+                ViewBag.PreviousRow = startRow;
+            }
+            if (startRow + numberOfRows > numberOfDocuments.Value)
+            {
+                ViewBag.NextClass = "page-item disabled";
+                ViewBag.NextRow = numberOfDocuments;
+            }
+            else
+            {
+                ViewBag.NextClass = "page-item";
+                ViewBag.NextRow = startRow + numberOfRows;
+            }
+            ViewBag.NumberOfRows = numberOfRows;
+            ViewBag.SearchText = searchText;
+            ViewBag.OrderBy = orderBy;
+            ViewBag.Filter = filter;
+
+            return View(model);
+        }
+
+        public JsonResult AutoComplete(string searchText)
+        {
+            SearchClient searchClient = new SearchClient(new Uri(_configuration.GetValue<string>("AZURE_SEARCH_URI")), _configuration.GetValue<string>("AZURE_SEARCH_INDEX"), new AzureKeyCredential(_configuration.GetValue<string>("AZURE_SEARCH_KEY")));
+            AutocompleteOptions autocompleteOptions = new AutocompleteOptions()
+            {
+                Mode = AutocompleteMode.OneTermWithContext
+            };
+            Response<AutocompleteResults> autocompleteResult = searchClient.Autocomplete(searchText, "documentSuggester", autocompleteOptions);
+
+            // Convert the autocompleteResult results to a list that can be displayed in the client.
+            List<string> searchResults = autocompleteResult.Value.Results.Select(x => x.Text).ToList();
+            return Json(searchResults);
         }
     }
 }
