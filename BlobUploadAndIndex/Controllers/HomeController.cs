@@ -19,11 +19,14 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -202,6 +205,8 @@ namespace BlobUploadAndIndex.Controllers
                 Facets = new List<Facet>()
             };
 
+            DateTime lastIndexUpdateDateTime = await GetLastIndexUpdateDateTime();
+
             if (!string.IsNullOrEmpty(searchText))
             {
                 string filterString = string.Empty;
@@ -287,6 +292,7 @@ namespace BlobUploadAndIndex.Controllers
             ViewBag.SearchText = searchText;
             ViewBag.OrderBy = orderBy;
             ViewBag.Filter = filter;
+            ViewBag.LastIndexUpdateDateTime = lastIndexUpdateDateTime.ToString("g");
 
             return View(model);
         }
@@ -304,5 +310,28 @@ namespace BlobUploadAndIndex.Controllers
             List<string> searchResults = autocompleteResult.Value.Results.Select(x => x.Text).ToList();
             return Json(searchResults);
         }
+
+        private async Task<DateTime> GetLastIndexUpdateDateTime()
+        {
+            DateTime lastUpdateDateTime = DateTime.MinValue;
+            HttpClient httpClient = new HttpClient();
+            string url = $"{_configuration.GetValue<string>("AZURE_SEARCH_URI")}/indexers/{_configuration.GetValue<string>("AZURE_SEARCH_INDEXER")}/status?api-version=2020-06-30";
+
+            httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            httpClient.DefaultRequestHeaders.Add("api-key", _configuration.GetValue<string>("AZURE_SEARCH_KEY"));
+            HttpResponseMessage response = await httpClient.GetAsync(url);
+            if (response.IsSuccessStatusCode)
+            {
+                string indexerStatusString = await response.Content.ReadAsStringAsync();
+                IndexerStatus indexerStatus = JsonConvert.DeserializeObject<IndexerStatus>(indexerStatusString);
+                if (indexerStatus.lastResult.status == "success")
+                {
+                    lastUpdateDateTime = indexerStatus.lastResult.endTime;
+                }
+            }
+
+            return lastUpdateDateTime;
+        }
+
     }
 }
